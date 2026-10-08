@@ -2,6 +2,9 @@
 
 > 让 AI Agent 用自然语言驱动 **Aquaveo GMS** 与 **Visual MODFLOW** —— 建模、改参、跑引擎、读结果、出图。
 
+*An MCP server that lets AI agents drive Aquaveo GMS and Visual MODFLOW headlessly —
+build, edit parameters, run the bundled USGS engines, read heads / drawdown / budget, and plot.*
+
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Python](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/)
 [![MCP](https://img.shields.io/badge/MCP-compatible-6f42c1.svg)](https://modelcontextprotocol.io/)
