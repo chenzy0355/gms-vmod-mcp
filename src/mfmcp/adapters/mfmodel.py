@@ -366,9 +366,9 @@ def run_model(model, engine_key: str | None = None, vendor: str | None = None,
     t0 = time.time()
     res = env.run_engine(eng, nam, cwd=m.model_ws, timeout=timeout)
 
-    # 输出文件（.hds/.hed/.lst）是否在本次运行中被写出
+    # 输出文件（.hds/.hed/.lst/.list）是否在本次运行中被写出
     fresh: list[str] = []
-    for suffix in (".hds", ".hed", ".lst", ".list"):
+    for suffix in (".hds", ".hed", ".lst", ".list", ".bud", ".cbc"):
         for cand in (Path(m.model_ws) / f"{m.name}{suffix}",
                      Path(m.model_ws) / f"{m.name}{suffix.upper()}"):
             if cand.exists() and cand.stat().st_mtime >= t0 - 2:
@@ -454,31 +454,63 @@ def drawdown(model, kper: int = -1) -> dict:
     return {"result": out}
 
 
+def _budget_sum(arr) -> float:
+    """均衡记录求和。
+
+    紧凑格式下分两类记录：
+    * 数组型（FLOW RIGHT FACE 等）—— 直接是 3D 数值数组；
+    * 列表型（WELLS / HEAD DEP BOUNDS / RECHARGE 等）—— 结构化数组，
+      末列才是流量。
+    """
+    a = np.asarray(arr)
+    if a.dtype.names:                     # 结构化（列表型记录）
+        vals = a[a.dtype.names[-1]]
+    else:
+        vals = a.ravel()
+    return float(np.nansum(np.asarray(vals, dtype=float)))
+
+
 def budget(model, kper: int = -1) -> dict:
     _require_flopy()
     from flopy.utils import CellBudgetFile
     out = []
     for m in _models(model):
-        cand = Path(m.model_ws) / f"{m.name}.bud"
-        if not cand.exists():
-            out.append({"model": getattr(m, "name", "?"), "error": "找不到 .bud"})
+        # 均衡文件名视 OC 的单位号而定：默认 * .bud，自定义单位常为 *.cbc
+        cand = None
+        for suffix in (".bud", ".cbc", ".BUD", ".CBC"):
+            p = Path(m.model_ws) / f"{m.name}{suffix}"
+            if p.exists():
+                cand = p
+                break
+        if cand is None:
+            out.append({"model": getattr(m, "name", "?"), "error": "找不到 .bud/.cbc"})
             continue
         cbf = CellBudgetFile(str(cand))
         times = cbf.get_times()
         t = times[kper]
+        # 用文件里实际存在的标签，避免拼写差异
+        try:
+            labels = [str(x).strip() for x in cbf.get_unique_record_names(decode=True)]
+        except Exception:
+            labels = []
         recs = []
-        for txt in ("FLOW RIGHT FACE", "FLOW FRONT FACE", "FLOW LOWER FACE",
-                    "WELLS", "RECHARGE", "RIVER LEAKAGE", "CONSTANT HEAD",
-                    "DRAINS", "ET", "STORAGE", "TOTAL IN", "TOTAL OUT"):
+        for txt in labels:
+            if not txt or txt.startswith("FLOW "):
+                continue
+            if txt not in ("WELLS", "HEAD DEP BOUNDS", "CONSTANT HEAD", "RECHARGE",
+                           "RIVER LEAKAGE", "DRAINS", "ET", "STORAGE",
+                           "TOTAL IN", "TOTAL OUT"):
+                continue
             try:
                 d = cbf.get_data(text=txt, totim=t)
-                if d:
-                    a = np.asarray(d[0], dtype=float)
-                    recs.append({"term": txt, "sum": float(np.nansum(a))})
+                if not d:
+                    continue
+                recs.append({"term": txt, "sum": _budget_sum(d[0])})
             except Exception:
                 continue
-        out.append({"model": getattr(m, "name", "?"), "times": times,
-                    "kper": kper, "terms": recs})
+        out.append({"model": getattr(m, "name", "?"), "budget_file": cand.name,
+                    "times": times, "kper": kper, "terms": recs,
+                    "all_labels": labels})
     return {"result": out}
 
 
