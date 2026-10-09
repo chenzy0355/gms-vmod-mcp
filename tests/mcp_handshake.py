@@ -12,20 +12,24 @@ import os
 import sys
 from pathlib import Path
 
-CFG = Path.home() / ".vscode" / "mcp.json"
-
-
 async def main() -> int:
     from mcp import ClientSession, StdioServerParameters
     from mcp.client.stdio import stdio_client
 
-    cfg = json.loads(CFG.read_text("utf-8"))
-    spec = cfg["mcpServers"]["modflow"]
-    env = dict(os.environ)
-    env.update(spec.get("env", {}))
+    root = Path(__file__).resolve().parent.parent
+    server_env = dict(os.environ)
+    server_env.update({
+        "PYTHONPATH": str(root / "src"),
+        "PYTHONIOENCODING": "utf-8",
+        "PYTHONUTF8": "1",
+    })
+    server_env.pop("PYTHONWARNINGS", None)
 
     params = StdioServerParameters(
-        command=spec["command"], args=spec["args"], env=env)
+        command=sys.executable,
+        args=["-m", "mfmcp.server"],
+        env=server_env
+    )
 
     async with stdio_client(params) as (read, write):
         async with ClientSession(read, write) as session:

@@ -12,7 +12,7 @@
 实现方式是用 FloPy 读写标准 MODFLOW 文件，再通过子进程调用这两款软件自带的 USGS 引擎，
 把加载模型、修改参数、运行、读取水头与降深、出图这些操作封装成 MCP 工具。
 
-当前版本注册 30 个工具，可识别 16 个引擎。
+当前版本注册 39 个工具，可识别 16 个引擎。
 
 ## 背景
 
@@ -121,8 +121,8 @@ Windows 下也可以直接执行 `run.cmd --info`。
 |---|---|
 | Claude Desktop | `%APPDATA%\Claude\claude_desktop_config.json` |
 | Cursor | `.cursor/mcp.json` |
-| Cline | 扩展设置中的 MCP 配置 |
-| VS Code | `~/.vscode/mcp.json` |
+| Cline / Roo Code | 扩展设置中的 MCP 配置 |
+| VS Code | `.vscode/mcp.json` |
 
 配置内容：
 
@@ -151,10 +151,27 @@ Windows 下也可以直接执行 `run.cmd --info`。
 |---|---|
 | 环境与发现 | `mfm_env` `mfm_engines` `mfm_scan` `mfm_xms_status` |
 | Visual MODFLOW 工程 | `vmod_info` `vmod_search_params` `vmod_list_params` `vmod_set_params` `vmod_set_engine` `vmod_run_engine` `vmod_read_namefile` `vmod_portable_namefile` `gms_export_hint` |
-| 模型读写 | `mfm_load` `mfm_summary` `mfm_cached` `mfm_drop` `mfm_get_array` `mfm_set_array` `mfm_save` `mfm_bc_list` `mfm_bc_edit` |
-| 运行 | `mfm_run` `mfm_run_engine_direct` |
-| 结果 | `mfm_heads` `mfm_drawdown` `mfm_budget` |
-| 出图 | `mfm_plot_map` `mfm_plot_timeseries` `mfm_plot_compare` |
+| 模型读写与参数修改 | `mfm_load` `mfm_summary` `mfm_cached` `mfm_drop` `mfm_get_array` `mfm_set_array` `mfm_save` `mfm_bc_list` `mfm_bc_edit` |
+| 诊断与规则校验 | `mfm_validate_model` `mfm_diagnose_log` |
+| 理论验证与敏感性 | `mfm_theis_benchmark` `mfm_sensitivity_analysis` `mfm_check_project` |
+| 运行计算 | `mfm_run` `mfm_run_engine_direct` |
+| 结果提取 | `mfm_heads` `mfm_drawdown` `mfm_budget` |
+| 抽水试验与 Grapher | `mfm_theis_type_curve_fit` `mfm_jacob_straight_line_fit` `mfm_run_grapher_script` `mfm_generate_grapher_script` |
+
+### 工具功能说明
+
+#### 抽水试验与 Grapher 绘图
+- `mfm_theis_type_curve_fit`：承压含水层非稳定流 Theis 双对数配线法。输入实测降深数据与抽水量，使用最小二乘拟合求解导水系数 $T$ 与储水系数 $S$。可生成双重平移坐标系（标准曲线与观测曲线分离）的 Grapher 16 自动化脚本（.bas），并调用 Scripter 导出 .grf 工程文件与 .png 图像。
+- `mfm_jacob_straight_line_fit`：承压含水层 Cooper-Jacob 半对数直线图解法。按 $u \le 0.05$ 条件筛选有效数据点进行线性回归，计算单对数周期降深差 $\Delta s$ 与零降深截距 $t_0$，求解 $T$ 与 $S$。可生成带回归统计报表框的 Grapher 16 脚本与图像。
+- `mfm_generate_grapher_script`：根据输入数据生成 Grapher 16 自动化脚本（.bas）。
+- `mfm_run_grapher_script`：调用本地安装的 Grapher 16 Scripter 引擎执行指定 .bas 脚本。
+
+#### 诊断校验与理论验证
+- `mfm_validate_model`：检查网格几何尺寸、顶底板标高合理性、初始水头范围与井抽注流量符号。
+- `mfm_diagnose_log`：解析运行输出日志（.lst），提取收敛迭代次数、最大残差所在网格、干涸网格数及水量均衡相对误差。
+- `mfm_theis_benchmark`：建立承压含水层标准抽水数值模型，与 Theis 解析解对比，输出平均绝对误差（MAE）与均方根误差（RMSE）。
+- `mfm_sensitivity_analysis`：按给定比例调整水力参数（如渗透系数），执行批量计算并输出水头响应变化。
+- `mfm_check_project`：检查工程目录完整性与 NAME 文件中的文件引用路径。
 
 ## 使用流程
 
@@ -253,6 +270,7 @@ AI 客户端 → mfmcp.server → tools/
    `server.py` 对 1.x 和 2.x 都做了兼容。
 7. 修改 `.vmf` 前会自动生成 `.bak`；`vmod_set_params` 默认 `dry_run=True`，
    确认无误后再写入。
+8. Golden Software Grapher 自动化通过 `Scripter.exe` 驱动。调用前需预先启动主进程承载 COM 接口，并在执行结束后回收进程，防止遗留后台句柄。
 
 ## 许可
 

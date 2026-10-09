@@ -202,7 +202,10 @@ def set_array(model, name: str, values, layer: int | None = None,
         if layer is not None and arr.ndim == 3:
             arr[layer] = target
         after = (float(np.nanmin(target)), float(np.nanmax(target)))
-        holder.set_data(arr)
+        if hasattr(holder, "set_data"):
+            holder.set_data(arr)
+        else:
+            setattr(pkg, attr, arr)
         return {"array": name, "op": "scale", "factor": factor, "layer": layer,
                 "before": before, "after": after}
     new = np.asarray(values, dtype=float)
@@ -217,7 +220,10 @@ def set_array(model, name: str, values, layer: int | None = None,
         arr = np.full_like(arr, float(new.ravel()[0]))
     else:
         raise MFError(f"新数组形状 {new.shape} 与模型 {arr.shape} 不匹配")
-    holder.set_data(arr)
+    if hasattr(holder, "set_data"):
+        holder.set_data(arr)
+    else:
+        setattr(pkg, attr, arr)
     return {"array": name, "op": "set", "shape": list(arr.shape),
             "min": float(np.nanmin(arr)), "max": float(np.nanmax(arr)),
             "mean": float(np.nanmean(arr))}

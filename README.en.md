@@ -14,7 +14,7 @@ executables bundled with both packages through child processes. Loading a model,
 editing parameters, running it, reading heads and drawdown, and plotting are all
 exposed as MCP tools.
 
-The current version registers 30 tools and detects 16 engines.
+The current version registers 39 tools and detects 16 engines.
 
 ## Background
 
@@ -129,8 +129,8 @@ The server uses stdio. Config file locations:
 |---|---|
 | Claude Desktop | `%APPDATA%\Claude\claude_desktop_config.json` |
 | Cursor | `.cursor/mcp.json` |
-| Cline | MCP settings in the extension |
-| VS Code | `~/.vscode/mcp.json` |
+| Cline / Roo Code | MCP settings in the extension |
+| VS Code | `.vscode/mcp.json` |
 
 Configuration:
 
@@ -159,10 +159,28 @@ Library warnings are already filtered in code.
 |---|---|
 | Environment and discovery | `mfm_env` `mfm_engines` `mfm_scan` `mfm_xms_status` |
 | Visual MODFLOW projects | `vmod_info` `vmod_search_params` `vmod_list_params` `vmod_set_params` `vmod_set_engine` `vmod_run_engine` `vmod_read_namefile` `vmod_portable_namefile` `gms_export_hint` |
-| Model I/O | `mfm_load` `mfm_summary` `mfm_cached` `mfm_drop` `mfm_get_array` `mfm_set_array` `mfm_save` `mfm_bc_list` `mfm_bc_edit` |
+| Model I/O & Parameters | `mfm_load` `mfm_summary` `mfm_cached` `mfm_drop` `mfm_get_array` `mfm_set_array` `mfm_save` `mfm_bc_list` `mfm_bc_edit` |
+| Diagnosis & Validation | `mfm_validate_model` `mfm_diagnose_log` |
+| Analytical Benchmark & Sensitivity | `mfm_theis_benchmark` `mfm_sensitivity_analysis` `mfm_check_project` |
 | Running | `mfm_run` `mfm_run_engine_direct` |
 | Results | `mfm_heads` `mfm_drawdown` `mfm_budget` |
 | Plotting | `mfm_plot_map` `mfm_plot_timeseries` `mfm_plot_compare` |
+| Pumping Tests & Grapher | `mfm_theis_type_curve_fit` `mfm_jacob_straight_line_fit` `mfm_run_grapher_script` `mfm_generate_grapher_script` |
+
+### Tool Descriptions
+
+#### Pumping Test Analysis & Grapher Integration
+- `mfm_theis_type_curve_fit`: Theis log-log type curve matching for unsteady flow in confined aquifers. Fits observed drawdown data against $W(u)$ to determine transmissivity $T$ and storage coefficient $S$. Can generate Grapher 16 scripts (.bas) with dual shifted coordinate axes and export .grf projects and .png figures via Scripter.
+- `mfm_jacob_straight_line_fit`: Cooper-Jacob semi-log straight-line method. Filters data points with $u \le 0.05$, performs linear regression on $s$ vs. $\lg t$, extracts slope $\Delta s$ and intercept $t_0$, and solves for $T$ and $S$. Can generate Grapher 16 scripts and figures with regression summary boxes.
+- `mfm_generate_grapher_script`: Generates Grapher 16 BASIC automation scripts (.bas) for plotting.
+- `mfm_run_grapher_script`: Executes a given .bas script via the Grapher 16 Scripter executable.
+
+#### Diagnostics & Analytical Benchmarks
+- `mfm_validate_model`: Validates grid geometry, layer elevations, starting head ranges, and pumping/injection sign conventions.
+- `mfm_diagnose_log`: Parses listing files (.lst) to extract convergence status, maximum residual cells, dry cells, and volumetric water budget discrepancy.
+- `mfm_theis_benchmark`: Compares numerical drawdown results against the analytical Theis solution, reporting MAE and RMSE.
+- `mfm_sensitivity_analysis`: Perturbs hydraulic parameters across specified scale factors, runs batch simulations, and extracts observation head responses.
+- `mfm_check_project`: Verifies directory structure and references in the MODFLOW NAME file.
 
 ## Workflow
 
@@ -269,6 +287,7 @@ These were hit during development. Worth reading before changing the related cod
    handles both 1.x and 2.x.
 7. `.vmf` files are backed up to `.bak` before editing. `vmod_set_params`
    defaults to `dry_run=True`; write only after checking the result.
+8. Golden Software Grapher automation is driven via `Scripter.exe`. The main application is pre-launched to host COM automation endpoints, and processes are terminated upon completion.
 
 ## License
 

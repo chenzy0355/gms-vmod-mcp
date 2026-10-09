@@ -8,6 +8,9 @@ _MODULES = (
     "model_tools",
     "run_tools",
     "plot_tools",
+    "diagnose_tools",
+    "analysis_tools",
+    "pumping_test_tools",
 )
 
 

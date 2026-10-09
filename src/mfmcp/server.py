@@ -36,16 +36,24 @@ from . import env, state
 from .tools import register_all
 
 INSTRUCTIONS = """\
-本地 MODFLOW 建模助手，可读写、运行、分析 GMS 与 Visual MODFLOW 的模型。
+本地 MODFLOW 建模与水文地质分析助手，可读写、运行、诊断、校验与分析 GMS 与 Visual MODFLOW 的模型。
 
 典型流程：
-1. mfm_env / mfm_scan            —— 先摸清环境与手上有哪些模型
+1. mfm_env / mfm_scan            —— 环境与模型文件探测
 2. vmod_info / vmod_search_params —— 读 Visual MODFLOW 工程（.vmf）
 3. mfm_load / mfm_summary        —— 加载标准 MODFLOW 模型
-4. mfm_set_array / mfm_bc_edit / vmod_set_params —— 改参数
-5. mfm_run                       —— 跑 MODFLOW（可用任一家的引擎）
-6. mfm_heads / mfm_drawdown / mfm_budget —— 读结果
-7. mfm_plot_map / mfm_plot_timeseries / mfm_plot_compare —— 出图
+4. mfm_validate_model            —— 模型物理规则与边界前置体检（防抽注水正负号混淆、初始水头低于底板等）
+5. mfm_set_array / mfm_bc_edit   —— 修改水文地质参数或边界条件
+6. mfm_run                       —— 驱动 MODFLOW 计算引擎（支持 GMS 与 Visual MODFLOW 原厂引擎）
+7. mfm_diagnose_log              —— 深入诊断运行日志（收敛性、最大残差网格、干涸网格、水均衡相对误差与调优建议）
+8. mfm_heads / mfm_drawdown / mfm_budget —— 读取水头场、降深与水量均衡
+9. mfm_theis_benchmark           —— 泰斯（Theis）解析解理论降深与数值解对照出图与误差评估
+10. mfm_sensitivity_analysis     —— 关键水文地质参数（K、S、Q）敏感性批处理计算与响应曲线
+11. mfm_check_project            —— 工程目录规范性与包依赖完整性体检
+12. mfm_plot_map / mfm_plot_timeseries / mfm_plot_compare —— 结果可视化出图
+13. mfm_theis_type_curve_fit     —— 抽水试验 Theis 双对数配线法自动优化拟合求参（T、S）
+14. mfm_jacob_straight_line_fit  —— Cooper-Jacob 半对数直线图解法自动拟合求参（Δs、t0、T、S）
+15. mfm_generate_grapher_script  —— 生成配套 Golden Software Grapher 16 自动化脚本（.BAS）与工程
 
 注意：GMS 工程（.gpr）需先在 GUI 里导出为 MODFLOW 文本文件才能被读取，见 gms_export_hint。
 """
