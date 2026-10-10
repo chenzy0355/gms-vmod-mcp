@@ -41,24 +41,12 @@ except ImportError:
 
 
 def _find_grapher_paths() -> tuple[Path | None, Path | None]:
-    """定位 Golden Software Grapher 主程序与 Scripter 脚本执行引擎。"""
-    candidates = []
-    cfg_home = env.load_config().get("grapher_home")
-    if cfg_home:
-        candidates.append(Path(cfg_home))
-    env_home = os.environ.get("GRAPHER_HOME")
-    if env_home:
-        candidates.append(Path(env_home))
-    candidates.extend([
-        Path(r"C:\Program Files\Golden Software\Grapher 16"),
-        Path(r"C:\Program Files\Golden Software\Grapher"),
-    ])
-    for c in candidates:
-        g = c / "Grapher.exe"
-        s = c / "Scripter.exe"
-        if g.exists() and s.exists():
-            return g, s
-    return None, None
+    """定位 Golden Software Grapher 主程序与 Scripter 脚本执行引擎。
+
+    查找逻辑上提到 ``env.find_grapher``（config/env.json → GRAPHER_HOME → 常见安装目录），
+    此处保留薄封装以免改动调用方。
+    """
+    return env.find_grapher()
 
 
 def _execute_grapher_script(bas_file: Path, target_grf: Path | None = None,

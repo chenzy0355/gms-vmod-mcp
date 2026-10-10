@@ -296,6 +296,50 @@ def vmod_info() -> dict:
     }
 
 
+def find_grapher() -> tuple[Path | None, Path | None]:
+    """定位 Golden Software Grapher 主程序与 Scripter 脚本执行引擎。
+
+    查找顺序：config/env.json 的 ``grapher_home`` → 环境变量 ``GRAPHER_HOME``
+    → 常见安装目录。返回 ``(Grapher.exe, Scripter.exe)``，未找到时为 ``(None, None)``。
+    """
+    candidates: list[Path] = []
+    cfg_home = CONFIG.get("grapher_home")
+    if cfg_home:
+        candidates.append(Path(cfg_home))
+    env_home = os.environ.get("GRAPHER_HOME")
+    if env_home:
+        candidates.append(Path(env_home))
+    candidates.extend([
+        Path(r"C:\Program Files\Golden Software\Grapher 16"),
+        Path(r"C:\Program Files\Golden Software\Grapher"),
+    ])
+    for c in candidates:
+        g = c / "Grapher.exe"
+        s = c / "Scripter.exe"
+        if g.exists() and s.exists():
+            return g, s
+    return None, None
+
+
+def grapher_info() -> dict:
+    """Golden Software Grapher 安装与脚本引擎探测结果。
+
+    Grapher 不参与建模与求解，只作为后处理绘图后端：由 ``Scripter.exe``
+    执行 ``.bas`` 脚本，产出 ``.grf`` 工程与 ``.png`` 图件。
+    """
+    grapher_exe, scripter_exe = find_grapher()
+    home = grapher_exe.parent if grapher_exe else Path(CONFIG.get("grapher_home") or "")
+    return {
+        "home": str(home) if str(home) else None,
+        "installed": bool(grapher_exe),
+        "exe": str(grapher_exe) if grapher_exe else None,
+        "scripter": str(scripter_exe) if scripter_exe else None,
+        "role": "后处理绘图（不做数值计算）",
+        "script_dir": str(workspace() / "grapher_scripts"),
+        "note": "通过 Scripter.exe 驱动 .bas 脚本；调用前需启动主进程承载 COM 接口，用后回收进程。",
+    }
+
+
 def _scan_errors(stdout: str) -> list[str]:
     """从引擎输出里挑出真正的报错行（排除「no error」这类良性措辞）。"""
     bad_tokens = ("error", "failed", "cannot", "can't find", "abnormal",

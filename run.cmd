@@ -1,5 +1,5 @@
 @echo off
-REM gms-vmod-mcp 启动器（stdio）。用法: run.cmd [--check|--info]
+REM gms-vmod-grapher-mcp 启动器（stdio）。用法: run.cmd [--check|--info]
 setlocal
 set "SRC=%~dp0src"
 if exist "%~dp0.venv\Scripts\python.exe" (

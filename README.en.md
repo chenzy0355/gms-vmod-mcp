@@ -1,18 +1,23 @@
 [简体中文](README.md) · [English](README.en.md)
 
-# gms-vmod-mcp
+# gms-vmod-grapher-mcp
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Python](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/)
 [![MCP](https://img.shields.io/badge/MCP-compatible-6f42c1.svg)](https://modelcontextprotocol.io/)
 [![Platform](https://img.shields.io/badge/platform-Windows-lightgrey.svg)](#)
 
-An MCP server that connects Aquaveo GMS and Visual MODFLOW to AI clients.
+An MCP server that connects Aquaveo GMS, Visual MODFLOW, and Golden Software
+Grapher to AI clients.
 
-It reads and writes standard MODFLOW files with FloPy, and drives the USGS engine
-executables bundled with both packages through child processes. Loading a model,
-editing parameters, running it, reading heads and drawdown, and plotting are all
-exposed as MCP tools.
+GMS and Visual MODFLOW handle modelling and solving: the server reads and writes
+standard MODFLOW files with FloPy, and drives the USGS engine executables bundled
+with both packages through child processes. Loading a model, editing parameters,
+running it, and reading heads and drawdown are all exposed as MCP tools.
+
+Grapher handles post-processing plots: it performs no numerical computation, but
+its `Scripter.exe` engine is driven by scripts to turn pumping-test fits,
+scatter plots, and contours into `.grf` projects and `.png` figures.
 
 The current version registers 39 tools and detects 16 engines.
 
@@ -23,6 +28,10 @@ open API that can be called directly. In GMS, `xms_api` is a client-side API tha
 requires a running GUI process. There is no way to automate either package
 without its interface.
 
+Grapher is Golden Software's dedicated plotting package. It does no numerical work
+of its own, but ships a `Scripter.exe` scripting engine that can be driven from the
+command line, which makes it a natural back end for plotting results.
+
 What both packages do provide is standard output:
 
 - models can be exported as standard MODFLOW input files (`.nam`, `.dis`, `.lpf`, `.wel`, ...)
@@ -32,18 +41,24 @@ So reading and writing model files with FloPy and calling those engines as child
 processes covers building, running, and post-processing a model without launching
 the GUI.
 
-## Differences between the two packages
+## Division of labour between the three packages
 
-| | Aquaveo GMS | Visual MODFLOW |
-|---|---|---|
-| Project format | `.gpr`, proprietary binary, not parseable externally | `.vmf`, XML, can be read and written programmatically |
-| NAME FILE | must be exported to MODFLOW text from the GUI first | `*.mfi`, contains absolute paths from install time and needs localizing after moving |
-| API | `xms_api`, client-side, requires a running GMS process | none |
-| Engine location | `models/*/usgs/*.exe` | `Mf2k.exe` and others in the install root |
-| Headless | yes, via the engines | yes, via the engines |
+GMS and Visual MODFLOW are both modelling and solving tools; Grapher is their
+plotting back end.
 
-Both fall into the MODFLOW pre/post-processor category. The part they have in
-common is the standard MODFLOW file layer.
+| | Aquaveo GMS | Visual MODFLOW | Golden Software Grapher |
+|---|---|---|---|
+| Role | modelling + solving | modelling + solving | post-processing / plotting |
+| Project format | `.gpr`, proprietary binary, not parseable externally | `.vmf`, XML, can be read and written programmatically | `.grf`, produced from `.bas` scripts |
+| NAME FILE | must be exported to MODFLOW text from the GUI first | `*.mfi`, contains absolute paths from install time and needs localizing after moving | — |
+| API | `xms_api`, client-side, requires a running GMS process | none | `Scripter.exe`, driven by command-line scripts |
+| Engine location | `models/*/usgs/*.exe` | `Mf2k.exe` and others in the install root | `Scripter.exe` in the install root |
+| Headless | yes, via the engines | yes, via the engines | yes, via scripts |
+
+GMS and Visual MODFLOW both fall into the MODFLOW pre/post-processor category. The
+part they have in common is the standard MODFLOW file layer. Grapher takes no part
+in modelling or solving; it only consumes computed results and measured data and
+produces figures.
 
 ## Supported engines
 
@@ -77,8 +92,8 @@ packages, the `vendor` argument selects one.
 Python 3.10 or newer is required.
 
 ```bash
-git clone https://github.com/chenzy0355/gms-vmod-mcp.git
-cd gms-vmod-mcp
+git clone https://github.com/chenzy0355/gms-vmod-grapher-mcp.git
+cd gms-vmod-grapher-mcp
 
 python -m venv .venv
 .venv\Scripts\python.exe -m pip install -e .
@@ -99,14 +114,15 @@ copy config\env.example.json config\env.json
 {
   "gms_home": "C:\\Program Files\\GMS 10.4 64-bit",
   "vmod_home": "C:\\Program Files\\Visual MODFLOW 4.0",
+  "grapher_home": "C:\\Program Files\\Golden Software\\Grapher 16",
   "workspace": "",          // empty means <repo>/workspace
   "extra_engine_dirs": []   // optional extra directories to search for engines
 }
 ```
 
 `config/env.json` is listed in `.gitignore` and will not be committed. When a
-path is left empty, the `GMS_HOME` and `VMOD_HOME` environment variables and the
-usual install locations are tried in order.
+path is left empty, the `GMS_HOME`, `VMOD_HOME`, and `GRAPHER_HOME` environment
+variables and the usual install locations are tried in order.
 
 Self-checks:
 
@@ -137,11 +153,11 @@ Configuration:
 ```json
 {
   "mcpServers": {
-    "gms-vmod": {
-      "command": "C:\\path\\to\\gms-vmod-mcp\\.venv\\Scripts\\python.exe",
+    "gms-vmod-grapher": {
+      "command": "C:\\path\\to\\gms-vmod-grapher-mcp\\.venv\\Scripts\\python.exe",
       "args": ["-m", "mfmcp.server"],
       "env": {
-        "PYTHONPATH": "C:\\path\\to\\gms-vmod-mcp\\src",
+        "PYTHONPATH": "C:\\path\\to\\gms-vmod-grapher-mcp\\src",
         "PYTHONIOENCODING": "utf-8",
         "PYTHONUTF8": "1"
       }
@@ -165,15 +181,20 @@ Library warnings are already filtered in code.
 | Running | `mfm_run` `mfm_run_engine_direct` |
 | Results | `mfm_heads` `mfm_drawdown` `mfm_budget` |
 | Plotting | `mfm_plot_map` `mfm_plot_timeseries` `mfm_plot_compare` |
-| Pumping Tests & Grapher | `mfm_theis_type_curve_fit` `mfm_jacob_straight_line_fit` `mfm_run_grapher_script` `mfm_generate_grapher_script` |
+| Pumping test fitting | `mfm_theis_type_curve_fit` `mfm_jacob_straight_line_fit` |
+| Grapher native plotting | `mfm_generate_grapher_script` `mfm_run_grapher_script` |
 
 ### Tool Descriptions
 
-#### Pumping Test Analysis & Grapher Integration
+#### Pumping Test Fitting
 - `mfm_theis_type_curve_fit`: Theis log-log type curve matching for unsteady flow in confined aquifers. Fits observed drawdown data against $W(u)$ to determine transmissivity $T$ and storage coefficient $S$. Can generate Grapher 16 scripts (.bas) with dual shifted coordinate axes and export .grf projects and .png figures via Scripter.
 - `mfm_jacob_straight_line_fit`: Cooper-Jacob semi-log straight-line method. Filters data points with $u \le 0.05$, performs linear regression on $s$ vs. $\lg t$, extracts slope $\Delta s$ and intercept $t_0$, and solves for $T$ and $S$. Can generate Grapher 16 scripts and figures with regression summary boxes.
+
+#### Grapher Native Plotting
 - `mfm_generate_grapher_script`: Generates Grapher 16 BASIC automation scripts (.bas) for plotting.
 - `mfm_run_grapher_script`: Executes a given .bas script via the Grapher 16 Scripter executable.
+  The main Grapher process is pre-launched to host the COM interface and is
+  recycled afterwards so that no background handles are left behind.
 
 #### Diagnostics & Analytical Benchmarks
 - `mfm_validate_model`: Validates grid geometry, layer elevations, starting head ranges, and pumping/injection sign conventions.
@@ -248,6 +269,8 @@ AI client → mfmcp.server → tools/
                                  .hds / .bud
                                       ↓
                         heads / drawdown / budget → plotting
+                                      ↓
+                        Grapher Scripter.exe (.bas → .grf / .png)
 ```
 
 To add a capability, drop a module with a `register(mcp)` function into
@@ -263,6 +286,12 @@ in `src/mfmcp/adapters/`.
 - `xms_api` is used only to probe a running GMS instance and is not a dependency.
 - Coverage is currently focused on the MODFLOW-2000 / 2005 / NWT family. MF6
   engines are detected but not fully wired up.
+- Grapher output requires a licensed local installation of Golden Software Grapher
+  (Grapher 16 in the development environment). No such software is bundled or
+  redistributed here.
+- Grapher is driven through `Scripter.exe`: the main process is pre-launched to
+  host the COM interface and is recycled after the script finishes, otherwise
+  background handles are left behind.
 
 ## Development notes
 
@@ -293,6 +322,6 @@ These were hit during development. Worth reading before changing the related cod
 
 [MIT](LICENSE)
 
-This project is not affiliated with Aquaveo LLC or Waterloo Hydrogeologic.
-GMS and Visual MODFLOW are trademarks of their respective owners. No vendor
-software is included or redistributed here.
+This project is not affiliated with Aquaveo LLC, Waterloo Hydrogeologic, or
+Golden Software LLC. GMS, Visual MODFLOW, and Grapher are trademarks of their
+respective owners. No vendor software is included or redistributed here.

@@ -1,12 +1,14 @@
-"""MODFLOW MCP Server —— 让 AI 接入并调控 GMS(10.4) 与 Visual MODFLOW(4.0)。
+"""MODFLOW MCP Server —— 让 AI 接入并调控 GMS(10.4)、Visual MODFLOW(4.0) 与 Grapher 16。
 
-设计原则（来自对两套软件的实际勘察）：
+设计原则（来自对三套软件的实际勘察）：
 
-* 两家都是 MODFLOW 的**前后处理器**，导出的模型是标准 MODFLOW 文件；
+* 两家建模软件都是 MODFLOW 的**前后处理器**，导出的模型是标准 MODFLOW 文件；
   因此以 FloPy 为内核，即可对两家模型做参数读写、运行、结果分析与出图。
 * Visual MODFLOW 的 ``.vmf`` 是完整 XML，可直接解析改写（网格/包/引擎/层参数）。
 * GMS 的 ``.gpr`` 是私有格式，但它的 ``models/`` 下有一整套 USGS 引擎 exe，
   可命令行直接驱动；``xms_api`` 仅能在 GMS 运行时调用。
+* Grapher 不参与建模与求解，只做**后处理绘图**：由 ``Scripter.exe`` 执行
+  ``.bas`` 脚本，产出 ``.grf`` 工程与 ``.png`` 图件。
 """
 
 from __future__ import annotations
@@ -36,7 +38,8 @@ from . import env, state
 from .tools import register_all
 
 INSTRUCTIONS = """\
-本地 MODFLOW 建模与水文地质分析助手，可读写、运行、诊断、校验与分析 GMS 与 Visual MODFLOW 的模型。
+本地 MODFLOW 建模与水文地质分析助手，可读写、运行、诊断、校验与分析 GMS 与 Visual MODFLOW 的模型，
+并可驱动 Golden Software Grapher 出原生图件。
 
 典型流程：
 1. mfm_env / mfm_scan            —— 环境与模型文件探测
@@ -53,7 +56,8 @@ INSTRUCTIONS = """\
 12. mfm_plot_map / mfm_plot_timeseries / mfm_plot_compare —— 结果可视化出图
 13. mfm_theis_type_curve_fit     —— 抽水试验 Theis 双对数配线法自动优化拟合求参（T、S）
 14. mfm_jacob_straight_line_fit  —— Cooper-Jacob 半对数直线图解法自动拟合求参（Δs、t0、T、S）
-15. mfm_generate_grapher_script  —— 生成配套 Golden Software Grapher 16 自动化脚本（.BAS）与工程
+15. mfm_generate_grapher_script  —— 生成 Golden Software Grapher 16 自动化脚本（.BAS）
+16. mfm_run_grapher_script       —— 调用本机 Grapher Scripter 执行脚本，导出 .grf 工程与 .png 图件
 
 注意：GMS 工程（.gpr）需先在 GUI 里导出为 MODFLOW 文本文件才能被读取，见 gms_export_hint。
 """
@@ -93,7 +97,8 @@ def main() -> None:
         return
     if "--info" in sys.argv:
         import json
-        print(json.dumps({"gms": env.gms_info(), "vmod": env.vmod_info()},
+        print(json.dumps({"gms": env.gms_info(), "vmod": env.vmod_info(),
+                          "grapher": env.grapher_info()},
                          indent=2, ensure_ascii=False))
         return
     mcp.run()

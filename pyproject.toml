@@ -3,16 +3,17 @@ requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "gms-vmod-mcp"
+name = "gms-vmod-grapher-mcp"
 version = "0.1.0"
-description = "MCP server that lets AI agents drive Aquaveo GMS and Visual MODFLOW models headlessly"
+description = "MCP server that lets AI agents drive Aquaveo GMS, Visual MODFLOW, and Golden Software Grapher headlessly"
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "MIT" }
 authors = [{ name = "chenzy0355" }]
 keywords = [
     "mcp", "model-context-protocol", "modflow", "groundwater", "hydrogeology",
-    "gms", "aquaveo", "visual-modflow", "flopy", "groundwater-modeling", "agent",
+    "gms", "aquaveo", "visual-modflow", "grapher", "golden-software", "flopy",
+    "groundwater-modeling", "plotting", "agent",
 ]
 classifiers = [
     "Development Status :: 4 - Beta",
@@ -35,12 +36,12 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/chenzy0355/gms-vmod-mcp"
-Repository = "https://github.com/chenzy0355/gms-vmod-mcp"
-Issues = "https://github.com/chenzy0355/gms-vmod-mcp/issues"
+Homepage = "https://github.com/chenzy0355/gms-vmod-grapher-mcp"
+Repository = "https://github.com/chenzy0355/gms-vmod-grapher-mcp"
+Issues = "https://github.com/chenzy0355/gms-vmod-grapher-mcp/issues"
 
 [project.scripts]
-gms-vmod-mcp = "mfmcp.server:main"
+gms-vmod-grapher-mcp = "mfmcp.server:main"
 
 [tool.setuptools]
 package-dir = { "" = "src" }
