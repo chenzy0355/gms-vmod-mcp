@@ -136,7 +136,7 @@ def register(mcp) -> None:
         if S <= 0:
             ss_info = mfmodel.get_array(model, "ss", layer=layer)
             if "mean" in ss_info and ss_info["mean"] is not None:
-                S = float(ss_info["mean"]) * 50.0
+                S = float(ss_info["mean"]) * b_val
             else:
                 S = 1e-3  # 承压含水层典型值
 
@@ -155,9 +155,24 @@ def register(mcp) -> None:
         if dd_grid is None:
             return {"ok": False, "error": "未能提取降深结果，请确认模型已成功运行且生成了 .hds 文件"}
 
-        # 3. 统计各网格距离与理论降深
-        delr = float(np.atleast_1d(getattr(mg, "delr", 100.0))[0])
-        delc = float(np.atleast_1d(getattr(mg, "delc", 100.0))[0])
+        # 3. 统计各网格距离与理论降深（严格基于模型网格真实节点中心坐标，兼容变间距/非均匀网格）
+        xc = getattr(mg, "xcellcenters", None)
+        yc = getattr(mg, "ycellcenters", None)
+        if xc is not None and yc is not None:
+            xc = np.asarray(xc)
+            yc = np.asarray(yc)
+            well_x = float(xc[well_row, well_col])
+            well_y = float(yc[well_row, well_col])
+        else:
+            delr = np.atleast_1d(getattr(mg, "delr", 100.0))
+            delc = np.atleast_1d(getattr(mg, "delc", 100.0))
+            x_edges = np.concatenate([[0], np.cumsum(delr)])
+            xc_1d = 0.5 * (x_edges[:-1] + x_edges[1:])
+            y_edges = np.concatenate([[0], np.cumsum(delc)])
+            yc_1d = 0.5 * (y_edges[:-1] + y_edges[1:])
+            xc, yc = np.meshgrid(xc_1d, yc_1d)
+            well_x = float(xc[well_row, well_col])
+            well_y = float(yc[well_row, well_col])
 
         r_points = []
         theo_points = []
@@ -165,7 +180,7 @@ def register(mcp) -> None:
 
         for i in range(nrow):
             for j in range(ncol):
-                dist = math.sqrt(((i - well_row) * delc) ** 2 + ((j - well_col) * delr) ** 2)
+                dist = math.sqrt((float(xc[i, j]) - well_x) ** 2 + (float(yc[i, j]) - well_y) ** 2)
                 if dist <= 0:
                     continue  # 井中心网格存在有限差分等效半径修正，解析解有对数奇点，通常剔除井中心点
                 # Theis 公式计算: u = r^2 * S / (4 * T * t)
